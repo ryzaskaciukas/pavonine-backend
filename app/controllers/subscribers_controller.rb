@@ -1,5 +1,5 @@
 class SubscribersController < ApplicationController
-  include Godfather
+  include Databound
 
   private def model
     Subscriber

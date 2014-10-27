@@ -11,10 +11,21 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20141019195528) do
+ActiveRecord::Schema.define(version: 20141026234401) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "gym_sessions", force: true do |t|
+    t.date     "day"
+    t.float    "squat"
+    t.float    "bench"
+    t.float    "press"
+    t.float    "powerclean"
+    t.float    "deadlift"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
 
   create_table "subscribers", force: true do |t|
     t.string   "email"
