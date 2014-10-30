@@ -11,10 +11,16 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20141028163135) do
+ActiveRecord::Schema.define(version: 20141030123213) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "current_users", force: true do |t|
+    t.string   "access_token"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
 
   create_table "gym_sessions", force: true do |t|
     t.date     "day"
@@ -39,13 +45,6 @@ ActiveRecord::Schema.define(version: 20141028163135) do
   create_table "subscribers", force: true do |t|
     t.string   "email"
     t.string   "name"
-    t.datetime "created_at"
-    t.datetime "updated_at"
-  end
-
-  create_table "users", force: true do |t|
-    t.string   "name"
-    t.string   "city"
     t.datetime "created_at"
     t.datetime "updated_at"
   end
