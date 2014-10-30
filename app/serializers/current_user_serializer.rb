@@ -13,7 +13,24 @@ class CurrentUserSerializer < ActiveModel::Serializer
     verified: true,
   }
 
-  attributes :id, :access_token, *EXAMPLE_ME.keys
+  def self.relationships
+    related_models = ActiveRecord::Base.descendants.select do |model|
+      model.column_names.include?('current_user_id')
+    end
+
+    names = related_models.map { |model| model.to_s.underscore.pluralize }
+
+    names.each do |name|
+      define_method(name) do
+        model = name.singularize.capitalize.constantize
+        model.where(current_user_id: object.id)
+      end
+    end
+
+    names
+  end
+
+  attributes :id, :access_token, *relationships, *EXAMPLE_ME.keys
 
   EXAMPLE_ME.keys.each do |key|
     define_method(key) do
