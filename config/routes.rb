@@ -1,8 +1,9 @@
 Rails.application.routes.draw do
-  databound :subscribers
-  databound :gym_sessions
-  databound :messages
-  databound :current_users
+  # databound :subscribers
+  # databound :gym_sessions
+  # databound :messages
+  # databound :current_users
+  databound :models
   # The priority is based upon order of creation: first created -> highest priority.
   # See how all your routes lay out with "rake routes".
 

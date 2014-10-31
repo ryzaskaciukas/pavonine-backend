@@ -24,12 +24,15 @@ gem 'jbuilder', '~> 2.0'
 gem 'sdoc', '~> 0.4.0',          group: :doc
 gem 'databound', path: '/home/domas/Developer/databound-rails'
 gem 'rack-cors', require: 'rack/cors'
+gem 'mongoid'
+gem 'mongoid_token'
 
 gem 'koala', '~> 1.10.0rc'
 
 # Spring speeds up development by keeping your application running in the background. Read more: https://github.com/rails/spring
 gem 'spring',        group: :development
 gem 'pry'
+gem 'pry-stack_explorer'
 gem 'active_model_serializers'
 gem 'memoist'
 

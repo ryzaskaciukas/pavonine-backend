@@ -1,5 +1,16 @@
-Rails.application.eager_load!
 ActiveModel::ArraySerializer.root = false
+ActiveModel::Serializer.root = false
+
+# class ActiveModel::Serializer
+#   self.singleton_class.send(:alias_method, :old_serializer_for, :serializer_for)
+#
+#   def self.serializer_for(record)
+#     serializer = old_serializer_for(record)
+#     return serializer if serializer
+#
+#     ApplicationSerializer
+#   end
+# end
 # ActiveModel::Serializer.setup do |config|
 #   config.embed = :subscriber_id
 #   config.embed_in_root = false
