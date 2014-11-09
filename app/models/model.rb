@@ -3,7 +3,7 @@ class Model
   include Mongoid::Attributes::Dynamic
   include Mongoid::Token
 
-  field :name, type: String
+  field :model, type: String
   field :app_token, type: String
   token
 end

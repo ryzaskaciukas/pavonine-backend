@@ -27,7 +27,8 @@ class ModelSerializer < ActiveModel::Serializer
     #     end
     #
     #     names
-    []
+    relations = Model.all.map(&:model).compact - ['current_user']
+    relations.map(&:pluralize)
   end
 
   def self.static_fields
@@ -51,6 +52,12 @@ class ModelSerializer < ActiveModel::Serializer
   dynamic_fields.each do |field|
     define_method field do
       ''
+    end
+  end
+
+  relationships.each do |relationship|
+    define_method relationship do
+      Model.all.where("#{object.model}_id" => object.token).to_a
     end
   end
 
