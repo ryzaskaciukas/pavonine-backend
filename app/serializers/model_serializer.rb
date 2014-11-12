@@ -13,22 +13,8 @@ class ModelSerializer < ActiveModel::Serializer
   }
 
   def self.relationships
-    #     related_models = ActiveRecord::Base.descendants.select do |model|
-    #       model.column_names.include?('current_user_id')
-    #     end
-    #
-    #     names = related_models.map { |model| model.to_s.underscore.pluralize }
-    #
-    #     names.each do |name|
-    #       define_method(name) do
-    #         model = name.singularize.capitalize.constantize
-    #         model.where(current_user_id: object.id)
-    #       end
-    #     end
-    #
-    #     names
     relations = Model.all.map(&:model).compact - ['current_user']
-    relations.map(&:pluralize)
+    relations.uniq.map(&:pluralize)
   end
 
   def self.static_fields
@@ -51,13 +37,16 @@ class ModelSerializer < ActiveModel::Serializer
 
   dynamic_fields.each do |field|
     define_method field do
-      ''
+      object[field]
     end
   end
 
   relationships.each do |relationship|
     define_method relationship do
-      Model.all.where("#{object.model}_id" => object.token).to_a
+      Model.all.where(
+        model: relationship.singularize,
+        "#{object.model}_id" => object.token,
+      ).to_a
     end
   end
 
@@ -66,7 +55,7 @@ class ModelSerializer < ActiveModel::Serializer
 
   EXAMPLE_ME.keys.each do |key|
     define_method key do
-      me[key]
+      me[key] if object.model == 'current_user'
     end
   end
 
