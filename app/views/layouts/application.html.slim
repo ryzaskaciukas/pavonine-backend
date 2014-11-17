@@ -1,0 +1,13 @@
+doctype html
+html
+  head
+    title Pavonine.io
+    meta name="viewport" content="initial-scale=1"
+    = stylesheet_link_tag "application", media: "all"
+
+    script src='//cdnjs.cloudflare.com/ajax/libs/zeroclipboard/2.1.6/ZeroClipboard.min.js'
+    = javascript_include_tag "application"
+    = csrf_meta_tags
+  body
+    .container-fluid
+      = yield

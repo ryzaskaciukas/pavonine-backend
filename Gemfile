@@ -26,7 +26,9 @@ gem 'databound'
 gem 'rack-cors', require: 'rack/cors'
 gem 'mongoid'
 gem 'mongoid_token'
+gem 'slim'
 
+gem "twitter-bootstrap-rails"
 gem 'koala', '~> 1.10.0rc'
 
 # Spring speeds up development by keeping your application running in the background. Read more: https://github.com/rails/spring

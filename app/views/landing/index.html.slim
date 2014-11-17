@@ -1,0 +1,47 @@
+.row
+  .col-md-8.col-md-offset-2
+    .header
+      nav
+        ul.nav.nav-pills.pull-right
+          li.active
+            a href="#" Start
+          li
+            a href="#" Docs
+          li
+            a.btn.btn-default href="#" Login
+          li
+            a.btn.btn-default href="#" Sign up
+      h3.text-muted Pavonine
+
+.row
+  .splash
+    h1.text-center
+      | Write only the business logic
+      p
+        small have everything else on the fly
+    div.showoff
+      .row.text-center
+        = image_tag 'sublime.png', class: 'editor'
+        = image_tag 'browser.png', class: 'browser'
+
+.row
+  .content
+    h2.text-center
+      | Launch MVP in a day
+      p
+        | Write
+        a href='http://handlebarsjs.com'  Handlebars
+        |  as if the supporting code is already there
+
+.row
+  .install.text-center
+    h2
+      | Start shipping it on your page
+
+      - code = "<script src='http://localhost:#{request.port}/app/#{@app_name}'>"
+      .code
+        .col-md-8.col-md-offset-2
+          .input-group
+            input.input-lg.form-control value='#{code}' readonly=''
+            .input-group-btn
+              button.input-lg.btn.btn-success#install-copy data-clipboard-text='#{code}' COPY
