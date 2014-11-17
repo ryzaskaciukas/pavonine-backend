@@ -22,7 +22,7 @@ gem 'turbolinks'
 gem 'jbuilder', '~> 2.0'
 # bundle exec rake doc:rails generates the API under doc/api.
 gem 'sdoc', '~> 0.4.0',          group: :doc
-gem 'databound', path: '/home/domas/Developer/databound-rails'
+gem 'databound'
 gem 'rack-cors', require: 'rack/cors'
 gem 'mongoid'
 gem 'mongoid_token'
