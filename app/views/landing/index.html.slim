@@ -38,10 +38,12 @@
     h2
       | Start shipping it on your page
 
-      - code = "<script src='http://localhost:#{request.port}/app/#{@app_name}'>"
       .code
         .col-md-8.col-md-offset-2
           .input-group
-            input.input-lg.form-control value='#{code}' readonly=''
+            input.input-lg.form-control value='#{@app.script(request)}' readonly=''
             .input-group-btn
-              button.input-lg.btn.btn-success#install-copy data-clipboard-text='#{code}' COPY
+              button.input-lg.btn.btn-success#install-copy data-clipboard-text='#{@app.script(request)}' COPY
+
+          p OR
+          = link_to 'Download template', "#{download_template_path(@app.name)}.html", class: 'btn btn-lg btn-success'

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>
+      Pavonine.io example
+    </title>
+    <meta content='initial-scale=1' name='viewport' />
+    <%= raw @app.script(request) %>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" rel="stylesheet">
+  </head>
+  <body>
+    <div class='container'>
+      <div class='row'>
+        <div class='text-center'>
+          {{#step 1}}
+            <h1>Post a note</h2>
+            {{#with note}}
+              <input value='{{content}}' class='form-control'>
+              <button onClick='{{create}}' class='btn btn-lg btn-success'>
+                Save me
+              </button>
+            {{/with}}
+          {{/step}}
+
+          {{#step 2}}
+            <h1>All notes</h1>
+            <ul class='list-group'>
+              {{#each notes}}
+                <li class='list-group-item list-group-item-success'>
+                  {{content}}
+                </li>
+              {{/each}}
+          {{/step}}
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -28,8 +28,9 @@ gem 'mongoid'
 gem 'mongoid_token'
 gem 'slim'
 
-gem "twitter-bootstrap-rails"
+gem 'twitter-bootstrap-rails'
 gem 'koala', '~> 1.10.0rc'
+gem 'faker'
 
 # Spring speeds up development by keeping your application running in the background. Read more: https://github.com/rails/spring
 gem 'spring',        group: :development
