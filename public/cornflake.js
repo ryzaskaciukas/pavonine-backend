@@ -61731,7 +61731,7 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
       return Facebook.init();
     };
     configure = function() {
-      return Persistance.setApi('http://10.30.0.1:3000');
+      return Persistance.setApi(window.PAVONINE_SERVER);
     };
     return {
       init: init
