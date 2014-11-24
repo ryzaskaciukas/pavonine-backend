@@ -963,7 +963,7 @@ Buffer.prototype.copy = function (target, target_start, start, end) {
 
   var len = end - start
 
-  if (len < 100 || !Buffer.TYPED_ARRAY_SUPPORT) {
+  if (len < 1000 || !Buffer.TYPED_ARRAY_SUPPORT) {
     for (var i = 0; i < len; i++) {
       target[i + target_start] = this[i + start]
     }
@@ -1032,6 +1032,7 @@ var BP = Buffer.prototype
  * Augment a Uint8Array *instance* (not the Uint8Array class!) with Buffer methods
  */
 Buffer._augment = function (arr) {
+  arr.constructor = Buffer
   arr._isBuffer = true
 
   // save reference to original Uint8Array get/set methods before overwriting
@@ -21112,7 +21113,7 @@ return jQuery;
 },{}],28:[function(require,module,exports){
 (function (global){
 //! moment.js
-//! version : 2.8.3
+//! version : 2.8.4
 //! authors : Tim Wood, Iskren Chernev, Moment.js contributors
 //! license : MIT
 //! momentjs.com
@@ -21123,7 +21124,7 @@ return jQuery;
     ************************************/
 
     var moment,
-        VERSION = '2.8.3',
+        VERSION = '2.8.4',
         // the global-scope this is NOT the global object in Node.js
         globalScope = typeof global !== 'undefined' ? global : this,
         oldGlobalMoment,
@@ -21146,7 +21147,7 @@ return jQuery;
         momentProperties = [],
 
         // check for nodeJS
-        hasModule = (typeof module !== 'undefined' && module.exports),
+        hasModule = (typeof module !== 'undefined' && module && module.exports),
 
         // ASP.NET json date format regex
         aspNetJsonRegex = /^\/?Date\((\-?\d+)/i,
@@ -21157,8 +21158,8 @@ return jQuery;
         isoDurationRegex = /^(-)?P(?:(?:([0-9,.]*)Y)?(?:([0-9,.]*)M)?(?:([0-9,.]*)D)?(?:T(?:([0-9,.]*)H)?(?:([0-9,.]*)M)?(?:([0-9,.]*)S)?)?|([0-9,.]*)W)$/,
 
         // format tokens
-        formattingTokens = /(\[[^\[]*\])|(\\)?(Mo|MM?M?M?|Do|DDDo|DD?D?D?|ddd?d?|do?|w[o|w]?|W[o|W]?|Q|YYYYYY|YYYYY|YYYY|YY|gg(ggg?)?|GG(GGG?)?|e|E|a|A|hh?|HH?|mm?|ss?|S{1,4}|X|zz?|ZZ?|.)/g,
-        localFormattingTokens = /(\[[^\[]*\])|(\\)?(LT|LL?L?L?|l{1,4})/g,
+        formattingTokens = /(\[[^\[]*\])|(\\)?(Mo|MM?M?M?|Do|DDDo|DD?D?D?|ddd?d?|do?|w[o|w]?|W[o|W]?|Q|YYYYYY|YYYYY|YYYY|YY|gg(ggg?)?|GG(GGG?)?|e|E|a|A|hh?|HH?|mm?|ss?|S{1,4}|x|X|zz?|ZZ?|.)/g,
+        localFormattingTokens = /(\[[^\[]*\])|(\\)?(LTS|LT|LL?L?L?|l{1,4})/g,
 
         // parsing token regexes
         parseTokenOneOrTwoDigits = /\d\d?/, // 0 - 99
@@ -21169,8 +21170,8 @@ return jQuery;
         parseTokenWord = /[0-9]*['a-z\u00A0-\u05FF\u0700-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]+|[\u0600-\u06FF\/]+(\s*?[\u0600-\u06FF]+){1,2}/i, // any word (or two) characters or numbers including two/three word month in arabic.
         parseTokenTimezone = /Z|[\+\-]\d\d:?\d\d/gi, // +00:00 -00:00 +0000 -0000 or Z
         parseTokenT = /T/i, // T (ISO separator)
+        parseTokenOffsetMs = /[\+\-]?\d+/, // 1234567890123
         parseTokenTimestampMs = /[\+\-]?\d+(\.\d{1,3})?/, // 123456789 123456789.123
-        parseTokenOrdinal = /\d{1,2}/,
 
         //strict parsing regexes
         parseTokenOneDigit = /\d/, // 0 - 9
@@ -21384,6 +21385,9 @@ return jQuery;
             },
             zz : function () {
                 return this.zoneName();
+            },
+            x    : function () {
+                return this.valueOf();
             },
             X    : function () {
                 return this.unix();
@@ -21811,7 +21815,10 @@ return jQuery;
             overflow =
                 m._a[MONTH] < 0 || m._a[MONTH] > 11 ? MONTH :
                 m._a[DATE] < 1 || m._a[DATE] > daysInMonth(m._a[YEAR], m._a[MONTH]) ? DATE :
-                m._a[HOUR] < 0 || m._a[HOUR] > 23 ? HOUR :
+                m._a[HOUR] < 0 || m._a[HOUR] > 24 ||
+                    (m._a[HOUR] === 24 && (m._a[MINUTE] !== 0 ||
+                                           m._a[SECOND] !== 0 ||
+                                           m._a[MILLISECOND] !== 0)) ? HOUR :
                 m._a[MINUTE] < 0 || m._a[MINUTE] > 59 ? MINUTE :
                 m._a[SECOND] < 0 || m._a[SECOND] > 59 ? SECOND :
                 m._a[MILLISECOND] < 0 || m._a[MILLISECOND] > 999 ? MILLISECOND :
@@ -21838,7 +21845,8 @@ return jQuery;
             if (m._strict) {
                 m._isValid = m._isValid &&
                     m._pf.charsLeftOver === 0 &&
-                    m._pf.unusedTokens.length === 0;
+                    m._pf.unusedTokens.length === 0 &&
+                    m._pf.bigHour === undefined;
             }
         }
         return m._isValid;
@@ -21890,8 +21898,18 @@ return jQuery;
 
     // Return a moment from input, that is local/utc/zone equivalent to model.
     function makeAs(input, model) {
-        return model._isUTC ? moment(input).zone(model._offset || 0) :
-            moment(input).local();
+        var res, diff;
+        if (model._isUTC) {
+            res = model.clone();
+            diff = (moment.isMoment(input) || isDate(input) ?
+                    +input : +moment(input)) - (+res);
+            // Use low-level api, because this fn is low-level api.
+            res._d.setTime(+res._d + diff);
+            moment.updateOffset(res, false);
+            return res;
+        } else {
+            return moment(input).local();
+        }
     }
 
     /************************************
@@ -21911,6 +21929,9 @@ return jQuery;
                     this['_' + i] = prop;
                 }
             }
+            // Lenient ordinal parsing accepts just a number in addition to
+            // number + (possibly) stuff coming from _ordinalParseLenient.
+            this._ordinalParseLenient = new RegExp(this._ordinalParse.source + '|' + /\d{1,2}/.source);
         },
 
         _months : 'January_February_March_April_May_June_July_August_September_October_November_December'.split('_'),
@@ -21923,22 +21944,32 @@ return jQuery;
             return this._monthsShort[m.month()];
         },
 
-        monthsParse : function (monthName) {
+        monthsParse : function (monthName, format, strict) {
             var i, mom, regex;
 
             if (!this._monthsParse) {
                 this._monthsParse = [];
+                this._longMonthsParse = [];
+                this._shortMonthsParse = [];
             }
 
             for (i = 0; i < 12; i++) {
                 // make the regex if we don't have it already
-                if (!this._monthsParse[i]) {
-                    mom = moment.utc([2000, i]);
+                mom = moment.utc([2000, i]);
+                if (strict && !this._longMonthsParse[i]) {
+                    this._longMonthsParse[i] = new RegExp('^' + this.months(mom, '').replace('.', '') + '$', 'i');
+                    this._shortMonthsParse[i] = new RegExp('^' + this.monthsShort(mom, '').replace('.', '') + '$', 'i');
+                }
+                if (!strict && !this._monthsParse[i]) {
                     regex = '^' + this.months(mom, '') + '|^' + this.monthsShort(mom, '');
                     this._monthsParse[i] = new RegExp(regex.replace('.', ''), 'i');
                 }
                 // test the regex
-                if (this._monthsParse[i].test(monthName)) {
+                if (strict && format === 'MMMM' && this._longMonthsParse[i].test(monthName)) {
+                    return i;
+                } else if (strict && format === 'MMM' && this._shortMonthsParse[i].test(monthName)) {
+                    return i;
+                } else if (!strict && this._monthsParse[i].test(monthName)) {
                     return i;
                 }
             }
@@ -21981,6 +22012,7 @@ return jQuery;
         },
 
         _longDateFormat : {
+            LTS : 'h:mm:ss A',
             LT : 'h:mm A',
             L : 'MM/DD/YYYY',
             LL : 'MMMM D, YYYY',
@@ -22021,9 +22053,9 @@ return jQuery;
             lastWeek : '[Last] dddd [at] LT',
             sameElse : 'L'
         },
-        calendar : function (key, mom) {
+        calendar : function (key, mom, now) {
             var output = this._calendar[key];
-            return typeof output === 'function' ? output.apply(mom) : output;
+            return typeof output === 'function' ? output.apply(mom, [now]) : output;
         },
 
         _relativeTime : {
@@ -22058,6 +22090,7 @@ return jQuery;
             return this._ordinal.replace('%d', number);
         },
         _ordinal : '%d',
+        _ordinalParse : /\d{1,2}/,
 
         preparse : function (string) {
             return string;
@@ -22199,6 +22232,8 @@ return jQuery;
         case 'a':
         case 'A':
             return config._locale._meridiemParse;
+        case 'x':
+            return parseTokenOffsetMs;
         case 'X':
             return parseTokenTimestampMs;
         case 'Z':
@@ -22233,7 +22268,7 @@ return jQuery;
         case 'E':
             return parseTokenOneOrTwoDigits;
         case 'Do':
-            return parseTokenOrdinal;
+            return strict ? config._locale._ordinalParse : config._locale._ordinalParseLenient;
         default :
             a = new RegExp(regexpEscape(unescapeFormat(token.replace('\\', '')), 'i'));
             return a;
@@ -22270,7 +22305,7 @@ return jQuery;
             break;
         case 'MMM' : // fall through to MMMM
         case 'MMMM' :
-            a = config._locale.monthsParse(input);
+            a = config._locale.monthsParse(input, token, config._strict);
             // if we didn't find a month name, mark the date as invalid.
             if (a != null) {
                 datePartArray[MONTH] = a;
@@ -22287,7 +22322,8 @@ return jQuery;
             break;
         case 'Do' :
             if (input != null) {
-                datePartArray[DATE] = toInt(parseInt(input, 10));
+                datePartArray[DATE] = toInt(parseInt(
+                            input.match(/\d{1,2}/)[0], 10));
             }
             break;
         // DAY OF YEAR
@@ -22312,11 +22348,13 @@ return jQuery;
         case 'A' :
             config._isPm = config._locale.isPM(input);
             break;
-        // 24 HOUR
-        case 'H' : // fall through to hh
-        case 'HH' : // fall through to hh
+        // HOUR
         case 'h' : // fall through to hh
         case 'hh' :
+            config._pf.bigHour = true;
+            /* falls through */
+        case 'H' : // fall through to HH
+        case 'HH' :
             datePartArray[HOUR] = toInt(input);
             break;
         // MINUTE
@@ -22335,6 +22373,10 @@ return jQuery;
         case 'SSS' :
         case 'SSSS' :
             datePartArray[MILLISECOND] = toInt(('0.' + input) * 1000);
+            break;
+        // UNIX OFFSET (MILLISECONDS)
+        case 'x':
+            config._d = new Date(toInt(input));
             break;
         // UNIX TIMESTAMP WITH MS
         case 'X':
@@ -22472,11 +22514,24 @@ return jQuery;
             config._a[i] = input[i] = (config._a[i] == null) ? (i === 2 ? 1 : 0) : config._a[i];
         }
 
+        // Check for 24:00:00.000
+        if (config._a[HOUR] === 24 &&
+                config._a[MINUTE] === 0 &&
+                config._a[SECOND] === 0 &&
+                config._a[MILLISECOND] === 0) {
+            config._nextDay = true;
+            config._a[HOUR] = 0;
+        }
+
         config._d = (config._useUTC ? makeUTCDate : makeDate).apply(null, input);
         // Apply timezone offset from input. The actual zone can be changed
         // with parseZone.
         if (config._tzm != null) {
             config._d.setUTCMinutes(config._d.getUTCMinutes() + config._tzm);
+        }
+
+        if (config._nextDay) {
+            config._a[HOUR] = 24;
         }
     }
 
@@ -22491,7 +22546,7 @@ return jQuery;
         config._a = [
             normalizedInput.year,
             normalizedInput.month,
-            normalizedInput.day,
+            normalizedInput.day || normalizedInput.date,
             normalizedInput.hour,
             normalizedInput.minute,
             normalizedInput.second,
@@ -22564,6 +22619,10 @@ return jQuery;
             config._pf.unusedInput.push(string);
         }
 
+        // clear _12h flag if hour is <= 12
+        if (config._pf.bigHour === true && config._a[HOUR] <= 12) {
+            config._pf.bigHour = undefined;
+        }
         // handle am pm
         if (config._isPm && config._a[HOUR] < 12) {
             config._a[HOUR] += 12;
@@ -22572,7 +22631,6 @@ return jQuery;
         if (config._isPm === false && config._a[HOUR] === 12) {
             config._a[HOUR] = 0;
         }
-
         dateFromConfig(config);
         checkOverflow(config);
     }
@@ -22832,7 +22890,8 @@ return jQuery;
 
     function makeMoment(config) {
         var input = config._i,
-            format = config._f;
+            format = config._f,
+            res;
 
         config._locale = config._locale || moment.localeData(config._l);
 
@@ -22856,7 +22915,14 @@ return jQuery;
             makeDateFromInput(config);
         }
 
-        return new Moment(config);
+        res = new Moment(config);
+        if (res._nextDay) {
+            // Adding is smart enough around DST
+            res.add(1, 'd');
+            res._nextDay = undefined;
+        }
+
+        return res;
     }
 
     moment = function (input, format, locale, strict) {
@@ -22888,7 +22954,7 @@ return jQuery;
         'release. Please refer to ' +
         'https://github.com/moment/moment/issues/1407 for more info.',
         function (config) {
-            config._d = new Date(config._i);
+            config._d = new Date(config._i + (config._useUTC ? ' UTC' : ''));
         }
     );
 
@@ -23200,7 +23266,12 @@ return jQuery;
         toISOString : function () {
             var m = moment(this).utc();
             if (0 < m.year() && m.year() <= 9999) {
-                return formatMoment(m, 'YYYY-MM-DD[T]HH:mm:ss.SSS[Z]');
+                if ('function' === typeof Date.prototype.toISOString) {
+                    // native implementation is ~50x faster, use it when we can
+                    return this.toDate().toISOString();
+                } else {
+                    return formatMoment(m, 'YYYY-MM-DD[T]HH:mm:ss.SSS[Z]');
+                }
             } else {
                 return formatMoment(m, 'YYYYYY-MM-DD[T]HH:mm:ss.SSS[Z]');
             }
@@ -23319,7 +23390,7 @@ return jQuery;
                     diff < 1 ? 'sameDay' :
                     diff < 2 ? 'nextDay' :
                     diff < 7 ? 'nextWeek' : 'sameElse';
-            return this.format(this.localeData().calendar(format, this));
+            return this.format(this.localeData().calendar(format, this, moment(now)));
         },
 
         isLeapYear : function () {
@@ -23388,36 +23459,45 @@ return jQuery;
 
         endOf: function (units) {
             units = normalizeUnits(units);
+            if (units === undefined || units === 'millisecond') {
+                return this;
+            }
             return this.startOf(units).add(1, (units === 'isoWeek' ? 'week' : units)).subtract(1, 'ms');
         },
 
         isAfter: function (input, units) {
+            var inputMs;
             units = normalizeUnits(typeof units !== 'undefined' ? units : 'millisecond');
             if (units === 'millisecond') {
                 input = moment.isMoment(input) ? input : moment(input);
                 return +this > +input;
             } else {
-                return +this.clone().startOf(units) > +moment(input).startOf(units);
+                inputMs = moment.isMoment(input) ? +input : +moment(input);
+                return inputMs < +this.clone().startOf(units);
             }
         },
 
         isBefore: function (input, units) {
+            var inputMs;
             units = normalizeUnits(typeof units !== 'undefined' ? units : 'millisecond');
             if (units === 'millisecond') {
                 input = moment.isMoment(input) ? input : moment(input);
                 return +this < +input;
             } else {
-                return +this.clone().startOf(units) < +moment(input).startOf(units);
+                inputMs = moment.isMoment(input) ? +input : +moment(input);
+                return +this.clone().endOf(units) < inputMs;
             }
         },
 
         isSame: function (input, units) {
+            var inputMs;
             units = normalizeUnits(units || 'millisecond');
             if (units === 'millisecond') {
                 input = moment.isMoment(input) ? input : moment(input);
                 return +this === +input;
             } else {
-                return +this.clone().startOf(units) === +makeAs(input, this).startOf(units);
+                inputMs = +moment(input);
+                return +(this.clone().startOf(units)) <= inputMs && inputMs <= +(this.clone().endOf(units));
             }
         },
 
@@ -23594,7 +23674,7 @@ return jQuery;
         },
 
         lang : deprecate(
-            'moment().lang() is deprecated. Use moment().localeData() instead.',
+            'moment().lang() is deprecated. Instead, use moment().localeData() to get the language configuration. Use moment().locale() to change languages.',
             function (key) {
                 if (key === undefined) {
                     return this.localeData();
@@ -23815,7 +23895,7 @@ return jQuery;
                 return units === 'month' ? months : months / 12;
             } else {
                 // handle milliseconds separately because of floating point math errors (issue #1867)
-                days = this._days + yearsToDays(this._months / 12);
+                days = this._days + Math.round(yearsToDays(this._months / 12));
                 switch (units) {
                     case 'week': return days / 7 + this._milliseconds / 6048e5;
                     case 'day': return days + this._milliseconds / 864e5;
@@ -23917,6 +23997,7 @@ return jQuery;
 
     // Set default locale, other locale will inherit from English.
     moment.locale('en', {
+        ordinalParse: /\d{1,2}(th|st|nd|rd)/,
         ordinal : function (number) {
             var b = number % 10,
                 output = (toInt(number % 100 / 10) === 1) ? 'th' :
@@ -41806,90 +41887,7 @@ exports.visitorList = [
 /*global exports:true*/
 "use strict";
 
-var Syntax = {
-        ArrayExpression: 'ArrayExpression',
-        ArrayPattern: 'ArrayPattern',
-        ArrowFunctionExpression: 'ArrowFunctionExpression',
-        AssignmentExpression: 'AssignmentExpression',
-        BinaryExpression: 'BinaryExpression',
-        BlockStatement: 'BlockStatement',
-        BreakStatement: 'BreakStatement',
-        CallExpression: 'CallExpression',
-        CatchClause: 'CatchClause',
-        ClassBody: 'ClassBody',
-        ClassDeclaration: 'ClassDeclaration',
-        ClassExpression: 'ClassExpression',
-        ClassProperty: 'ClassProperty',
-        ComprehensionBlock: 'ComprehensionBlock',
-        ComprehensionExpression: 'ComprehensionExpression',
-        ConditionalExpression: 'ConditionalExpression',
-        ContinueStatement: 'ContinueStatement',
-        DebuggerStatement: 'DebuggerStatement',
-        DoWhileStatement: 'DoWhileStatement',
-        EmptyStatement: 'EmptyStatement',
-        ExportDeclaration: 'ExportDeclaration',
-        ExportBatchSpecifier: 'ExportBatchSpecifier',
-        ExportSpecifier: 'ExportSpecifier',
-        ExpressionStatement: 'ExpressionStatement',
-        ForInStatement: 'ForInStatement',
-        ForOfStatement: 'ForOfStatement',
-        ForStatement: 'ForStatement',
-        FunctionDeclaration: 'FunctionDeclaration',
-        FunctionExpression: 'FunctionExpression',
-        Identifier: 'Identifier',
-        IfStatement: 'IfStatement',
-        ImportDeclaration: 'ImportDeclaration',
-        ImportSpecifier: 'ImportSpecifier',
-        LabeledStatement: 'LabeledStatement',
-        Literal: 'Literal',
-        LogicalExpression: 'LogicalExpression',
-        MemberExpression: 'MemberExpression',
-        MethodDefinition: 'MethodDefinition',
-        ModuleDeclaration: 'ModuleDeclaration',
-        NewExpression: 'NewExpression',
-        ObjectExpression: 'ObjectExpression',
-        ObjectPattern: 'ObjectPattern',
-        ObjectTypeAnnotation: 'ObjectTypeAnnotation',
-        OptionalParameter: 'OptionalParameter',
-        ParametricTypeAnnotation: 'ParametricTypeAnnotation',
-        ParametricallyTypedIdentifier: 'ParametricallyTypedIdentifier',
-        Program: 'Program',
-        Property: 'Property',
-        ReturnStatement: 'ReturnStatement',
-        SequenceExpression: 'SequenceExpression',
-        SpreadElement: 'SpreadElement',
-        SpreadProperty: 'SpreadProperty',
-        SwitchCase: 'SwitchCase',
-        SwitchStatement: 'SwitchStatement',
-        TaggedTemplateExpression: 'TaggedTemplateExpression',
-        TemplateElement: 'TemplateElement',
-        TemplateLiteral: 'TemplateLiteral',
-        ThisExpression: 'ThisExpression',
-        ThrowStatement: 'ThrowStatement',
-        TryStatement: 'TryStatement',
-        TypeAnnotatedIdentifier: 'TypeAnnotatedIdentifier',
-        TypeAnnotation: 'TypeAnnotation',
-        UnaryExpression: 'UnaryExpression',
-        UpdateExpression: 'UpdateExpression',
-        VariableDeclaration: 'VariableDeclaration',
-        VariableDeclarator: 'VariableDeclarator',
-        VoidTypeAnnotation: 'VoidTypeAnnotation',
-        WhileStatement: 'WhileStatement',
-        WithStatement: 'WithStatement',
-        XJSIdentifier: 'XJSIdentifier',
-        XJSNamespacedName: 'XJSNamespacedName',
-        XJSMemberExpression: 'XJSMemberExpression',
-        XJSEmptyExpression: 'XJSEmptyExpression',
-        XJSExpressionContainer: 'XJSExpressionContainer',
-        XJSElement: 'XJSElement',
-        XJSClosingElement: 'XJSClosingElement',
-        XJSOpeningElement: 'XJSOpeningElement',
-        XJSAttribute: 'XJSAttribute',
-        XJSSpreadAttribute: 'XJSSpreadAttribute',
-        XJSText: 'XJSText',
-        YieldExpression: 'YieldExpression',
-        AwaitExpression: 'AwaitExpression'
-    };
+var Syntax = require('esprima-fb').Syntax;
 var utils = require('jstransform/src/utils');
 
 var FALLBACK_TAGS = require('./xjs').knownTags;
@@ -42160,7 +42158,7 @@ exports.visitorList = [
   visitReactTag
 ];
 
-},{"./xjs":58,"jstransform/src/utils":45}],57:[function(require,module,exports){
+},{"./xjs":58,"esprima-fb":30,"jstransform/src/utils":45}],57:[function(require,module,exports){
 /**
  * Copyright 2013-2014 Facebook, Inc.
  *
@@ -61547,14 +61545,13 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
   var Converter;
 
   Converter = (function() {
-    var Data, HTMLtoJSX, Handlebars, HandlebarsLookups, HandlebarsMock, INNER_BODY_REGEX, Replacer, htmlToReactComponent, react_tools, toComponent, toJSX, toXHTML, wrapInJSX;
+    var HTMLtoJSX, Handlebars, HandlebarsLookups, HandlebarsMock, INNER_BODY_REGEX, Replacer, evalWithDependencies, htmlToReactComponent, react_tools, toComponent, toJSX, toXHTML, wrapInJSX;
     react_tools = require('react-tools');
     HTMLtoJSX = require('../vendor/htmltojsx.min');
     Replacer = require('./replacer');
     Handlebars = require('handlebars');
     HandlebarsLookups = require('./handlebars/lookups');
     HandlebarsMock = require('./handlebars/mock');
-    Data = require('./data');
     htmlToReactComponent = function(klass_name, element) {
       var jsx, xhtml;
       xhtml = toXHTML(element);
@@ -61562,31 +61559,36 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
       return toComponent(klass_name, jsx);
     };
     toComponent = function(klass_name, jsx) {
-      var React, ReactMixin, component_code, moment, _;
+      var component_code;
       component_code = react_tools.transform(jsx);
+      return evalWithDependencies(component_code, klass_name);
+    };
+    evalWithDependencies = function(code, additional) {
+      var React, ReactMixin, moment, result, _;
+      if (additional == null) {
+        additional = '';
+      }
       ReactMixin = require('./react_mixin');
       React = require('react');
       _ = require('lodash');
       moment = require('moment');
-      eval(component_code);
-      console.log(component_code);
-      return eval(klass_name);
+      result = eval(code);
+      if (additional) {
+        result = eval(additional);
+      }
+      return result;
     };
     toJSX = function(klass_name, html) {
-      var mocked, react_code, template, wrapped;
+      var mocked, react_code, t, template, wrapped;
       HandlebarsLookups.clean();
       template = Handlebars.compile(html, {
         trackIds: true
       });
-      console.log(template());
-      if (Data.missing()) {
-        throw new Error('get_missing');
-      }
+      t = template();
+      HandlebarsMock.scanDefaultValues(t);
       mocked = template(HandlebarsMock.get()).toString();
       wrapped = wrapInJSX(klass_name, mocked);
-      react_code = Replacer.toReactCode(wrapped);
-      console.log(react_code);
-      return react_code;
+      return react_code = Replacer.toReactCode(wrapped);
     };
     wrapInJSX = function(klass_name, html) {
       var converter, jsx_code, render_index;
@@ -61608,7 +61610,8 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
       return RegExp.$1;
     };
     return {
-      htmlToReactComponent: htmlToReactComponent
+      htmlToReactComponent: htmlToReactComponent,
+      evalWithDependencies: evalWithDependencies
     };
   })();
 
@@ -61616,22 +61619,29 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
 
 }).call(this);
 
-},{"../vendor/htmltojsx.min":221,"./data":206,"./handlebars/lookups":210,"./handlebars/mock":212,"./react_mixin":217,"./replacer":218,"handlebars":24,"lodash":27,"moment":28,"react":203,"react-tools":29}],206:[function(require,module,exports){
+},{"../vendor/htmltojsx.min":228,"./handlebars/lookups":215,"./handlebars/mock":217,"./react_mixin":223,"./replacer":224,"handlebars":24,"lodash":27,"moment":28,"react":203,"react-tools":29}],206:[function(require,module,exports){
 (function() {
   var Data,
     __slice = [].slice;
 
   Data = (function() {
-    var HandlebarsLookups, Memory, loggedIn, missing, missingVariables, used, _;
+    var DataLoader, Databound, HandlebarsLookups, Memory, getMissing, missingCollections, missingVariables, used, _;
     _ = require('lodash');
+    Databound = require('databound');
     HandlebarsLookups = require('./handlebars/lookups');
     Memory = require('./memory');
+    DataLoader = require('./data_loader');
     missingVariables = function() {
       var result;
-      result = [];
-      if (used('current_user') && !loggedIn()) {
+      result = missingCollections();
+      if (used('current_user')) {
         result.push('current_user');
       }
+      return _.uniq(result);
+    };
+    missingCollections = function() {
+      var result;
+      result = [];
       _.each(HandlebarsLookups.getCollection(), function(lookup) {
         var owner, path, _ref;
         _ref = lookup.split('.'), owner = _ref[0], path = 2 <= _ref.length ? __slice.call(_ref, 1) : [];
@@ -61641,20 +61651,18 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
       });
       return result;
     };
-    missing = function() {
-      return !_.isEmpty(missingVariables());
-    };
     used = function(key) {
-      return _.any(HandlebarsLookups.getIndividual(), function(lookup) {
-        return lookup === key;
-      });
+      return _.contains(HandlebarsLookups.getIndividual(), key);
     };
-    loggedIn = function() {
-      return Memory.has('current_user');
+    getMissing = function() {
+      if (_.isEmpty(missingVariables())) {
+        return Databound.prototype.promise(true);
+      }
+      return DataLoader.load(missingVariables());
     };
     return {
-      missing: missing,
-      missingVariables: missingVariables
+      missingVariables: missingVariables,
+      getMissing: getMissing
     };
   })();
 
@@ -61662,28 +61670,113 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
 
 }).call(this);
 
-},{"./handlebars/lookups":210,"./memory":214,"lodash":27}],207:[function(require,module,exports){
+},{"./data_loader":207,"./handlebars/lookups":215,"./memory":220,"databound":1,"lodash":27}],207:[function(require,module,exports){
+(function() {
+  var DataLoader;
+
+  DataLoader = (function() {
+    var $, Databound, Memory, Persistance, Utils, currentUserTokens, load, loadCurrentUser, loadSingle, _;
+    Databound = require('databound');
+    $ = require('jquery');
+    _ = require('lodash');
+    Persistance = require('./persistance');
+    Utils = require('./utils');
+    Memory = require('./memory');
+    load = function(missings) {
+      return $.when.apply($, _.map(missings, function(missing) {
+        return loadSingle(missing);
+      }));
+    };
+    loadSingle = function(name) {
+      var attributes;
+      if (name === 'current_user') {
+        return loadCurrentUser();
+      }
+      attributes = {
+        model: Utils.singularize(name)
+      };
+      return Persistance.communicate('where', attributes);
+    };
+    loadCurrentUser = function() {
+      if (!currentUserTokens()) {
+        return Utils.failedPromise('login');
+      }
+      return Persistance.communicate('update', currentUserTokens()).then(function(current_user) {
+        Memory.setForever(current_user.attributes);
+        return Databound.prototype.promise(true);
+      });
+    };
+    currentUserTokens = function() {
+      var from_storage;
+      from_storage = Memory.getForever('current_user');
+      if (_.isEmpty(from_storage)) {
+        return;
+      }
+      return _.pick(from_storage, 'id', 'access_token', 'model');
+    };
+    return {
+      load: load
+    };
+  })();
+
+  module.exports = DataLoader;
+
+}).call(this);
+
+},{"./memory":220,"./persistance":222,"./utils":227,"databound":1,"jquery":25,"lodash":27}],208:[function(require,module,exports){
+(function() {
+  var Defaults;
+
+  Defaults = (function() {
+    var data, getAll, save, _;
+    _ = require('lodash');
+    _.mixin(require('lodash-deep'));
+    data = {};
+    save = function(path, val) {
+      return data[path] = val;
+    };
+    getAll = function() {
+      return data;
+    };
+    return {
+      save: save,
+      getAll: getAll
+    };
+  })();
+
+  module.exports = Defaults;
+
+}).call(this);
+
+},{"lodash":27,"lodash-deep":26}],209:[function(require,module,exports){
 (function() {
   var Facebook;
 
   Facebook = (function() {
-    var $, Memory, Persistance, Router, init, loggedIn, login, _;
+    var $, Memory, Persistance, Router, ensureInit, init, loggedIn, login, _;
     $ = require('jquery');
     _ = require('lodash');
     _.mixin(require('lodash-deep'));
     Router = require('./router');
     Memory = require('./memory');
     Persistance = require('./persistance');
-    init = function() {
+    ensureInit = function() {
+      var deferred;
+      deferred = $.Deferred();
+      _.once(init)(deferred);
+      return deferred.promise();
+    };
+    init = function(deferred) {
       $.ajaxSetup({
         cache: true
       });
       return $.getScript('//connect.facebook.net/en_UK/all.js', function() {
-        return FB.init({
-          appId: '776916785684160',
+        FB.init({
+          appId: window.PAVONINE_FB_APP_ID,
           xfbml: true,
           version: 'v2.1'
         });
+        return deferred.resolve(true);
       });
     };
     loggedIn = function(resp) {
@@ -61699,12 +61792,13 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
       });
     };
     login = function() {
-      return FB.login(loggedIn, {
-        scope: 'user_about_me'
+      return ensureInit().then(function() {
+        return FB.login(loggedIn, {
+          scope: 'user_about_me'
+        });
       });
     };
     return {
-      init: init,
       login: login
     };
   })();
@@ -61713,86 +61807,329 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
 
 }).call(this);
 
-},{"./memory":214,"./persistance":216,"./router":219,"jquery":25,"lodash":27,"lodash-deep":26}],208:[function(require,module,exports){
+},{"./memory":220,"./persistance":222,"./router":225,"jquery":25,"lodash":27,"lodash-deep":26}],210:[function(require,module,exports){
 (function() {
-  var Cornflake;
+  var Core;
 
-  window.Cornflake = Cornflake = module.exports = (function() {
-    var Facebook, HandlebarsManager, Persistance, Router, configure, init;
-    Persistance = require('./persistance');
+  Core = (function() {
+    var Facebook, HandlebarsManager, Router, init;
     HandlebarsManager = require('./handlebars/manager');
     Router = require('./router');
     Facebook = require('./facebook');
     init = function() {
-      console.log('Here and now');
       HandlebarsManager.init();
-      configure();
-      Router.change(1);
-      return Facebook.init();
-    };
-    configure = function() {
-      return Persistance.setApi(window.PAVONINE_SERVER);
+      return Router.change(1);
     };
     return {
       init: init
     };
   })();
 
-  Cornflake.init();
+  Core.init();
+
+  module.exports = Core;
 
 }).call(this);
 
-},{"./facebook":207,"./handlebars/manager":211,"./persistance":216,"./router":219}],209:[function(require,module,exports){
+},{"./facebook":209,"./handlebars/manager":216,"./router":225}],211:[function(require,module,exports){
+(function() {
+  var FilledModel;
+
+  FilledModel = (function() {
+    var Converter, Defaults, HandlebarsMock, Memory, Utils, traverse, _;
+
+    _ = require('lodash');
+
+    _.mixin(require('lodash-deep'));
+
+    traverse = require('traverse');
+
+    Memory = require('./memory');
+
+    Utils = require('./utils');
+
+    Defaults = require('./defaults');
+
+    Converter = require('./converter');
+
+    HandlebarsMock = require('./handlebars/mock');
+
+    function FilledModel() {
+      this.fillAttributes();
+    }
+
+    FilledModel.prototype.fillAttributes = function() {
+      this.attributes = {};
+      this.fillFromEmptyMock();
+      this.fillFromMemory();
+      return this.fillDefaults();
+    };
+
+    FilledModel.prototype.fillDefaults = function() {
+      var _this;
+      _this = this;
+      return _.each(Defaults.getAll(), function(val, path_str) {
+        var fn, path;
+        path = path_str.split('.');
+        if (_this.existingValue(path)) {
+          return;
+        }
+        fn = val.match(/^{(.*)}$/);
+        if (fn) {
+          val = _this.defaultFunction(path_str, fn[1]);
+        }
+        return _.deepSet(_this.attributes, path_str, val);
+      });
+    };
+
+    FilledModel.prototype.defaultFunction = function(path_str, fn) {
+      return Converter.evalWithDependencies(fn);
+    };
+
+    FilledModel.prototype.fillFromEmptyMock = function() {
+      var _this;
+      _this = this;
+      return _.each(traverse(HandlebarsMock.getEmpty()).paths(), function(path) {
+        if (!path.length) {
+          return;
+        }
+        return _.deepSet(_this.attributes, Utils.pathString(path), '');
+      });
+    };
+
+    FilledModel.prototype.fillFromMemory = function() {
+      var _this;
+      _this = this;
+      return _.each(traverse(this.attributes).paths(), function(path) {
+        return _this.fillPath(path);
+      });
+    };
+
+    FilledModel.prototype.fillPath = function(path) {
+      if (_.isEmpty(this.valueFromMemory(path))) {
+        return;
+      }
+      if (_.isObject(this.existingValue(path))) {
+        return this.fillRelation(path);
+      } else {
+        return this.fillElementary(path);
+      }
+    };
+
+    FilledModel.prototype.fillRelation = function(path) {
+      var _this;
+      _this = this;
+      this.overrideFromMemory(path);
+      return this.addRelationIds(path);
+    };
+
+    FilledModel.prototype.overrideFromMemory = function(path) {
+      var _this;
+      _this = this;
+      return _.each(this.valueFromMemory(path), function(val, key) {
+        return _.deepSet(_this.attributes, "" + (Utils.pathString(path)) + "." + key, val);
+      });
+    };
+
+    FilledModel.prototype.addRelationIds = function(path) {
+      var _this;
+      _this = this;
+      return _.each(this.existingValue(path), function(val, key) {
+        if (!(_.isObject(val) && !_.isArray(val))) {
+          return;
+        }
+        return _this.addRelationId(path, key, val);
+      });
+    };
+
+    FilledModel.prototype.addRelationId = function(path, key, val) {
+      var relation_id_path;
+      relation_id_path = "" + (Utils.pathString(path)) + "." + key + "." + (this.existingValue(path).model) + "_id";
+      return _.deepSet(this.attributes, relation_id_path, this.existingValue(path).id);
+    };
+
+    FilledModel.prototype.fillElementary = function(path) {
+      return _.deepSet(this.attributes, Utils.pathString(path), this.valueFromMemory(path));
+    };
+
+    FilledModel.prototype.valueFromMemory = function(path) {
+      return Memory.get(Utils.pathString(path));
+    };
+
+    FilledModel.prototype.existingValue = function(path) {
+      return _.deepGet(this.attributes, Utils.pathString(path));
+    };
+
+    return FilledModel;
+
+  })();
+
+  module.exports = FilledModel;
+
+}).call(this);
+
+},{"./converter":205,"./defaults":208,"./handlebars/mock":217,"./memory":220,"./utils":227,"lodash":27,"lodash-deep":26,"traverse":204}],212:[function(require,module,exports){
+(function() {
+  var BaseHelpers;
+
+  BaseHelpers = (function() {
+    var HandlebarsLookups, Replacer, register, registerEach, registerIf, registerWith;
+    HandlebarsLookups = require('./lookups');
+    Replacer = require('../replacer');
+    register = function() {
+      registerEach();
+      registerIf();
+      return registerWith();
+    };
+    registerEach = function() {
+      var HandlebarsHelpers;
+      HandlebarsHelpers = require('./helpers');
+      return HandlebarsHelpers.register('each', function(raw_ctx, wrapped_ctx, args, opts) {
+        var each_iteration, records_exist;
+        HandlebarsLookups.addCollection(raw_ctx);
+        each_iteration = Replacer.replace(opts.fn, /this\.state\.(.+?)/, function(attribute, initial) {
+          return "record." + attribute;
+        });
+        records_exist = ("_.map(" + wrapped_ctx + ", function(record, i) {\n") + ("return " + each_iteration + "\n") + '})';
+        if (opts.inverse) {
+          return "" + wrapped_ctx + ".length ? (" + records_exist + ") : (" + opts.inverse + ")";
+        } else {
+          return records_exist;
+        }
+      });
+    };
+    registerIf = function() {
+      var HandlebarsHelpers;
+      HandlebarsHelpers = require('./helpers');
+      return HandlebarsHelpers.register('if', function(raw_ctx, wrapped_ctx, args, opts) {
+        return "" + wrapped_ctx + " ? " + (HandlebarsHelpers.wrap(opts.fn || null)) + " : " + (HandlebarsHelpers.wrap(opts.inverse || null));
+      });
+    };
+    registerWith = function() {
+      var HandlebarsHelpers;
+      HandlebarsHelpers = require('./helpers');
+      return HandlebarsHelpers.register('with', function(raw_ctx, wrapped_ctx, args, opts) {
+        var ACTION_PARTIAL_REGEX, result;
+        result = Replacer.replace(opts.fn, /{this\.state\.(.+?)}/g, function(attribute, initial) {
+          var path;
+          path = [raw_ctx, attribute].join('.');
+          HandlebarsLookups.add(path);
+          return "{" + (Replacer.addState(path)) + "}";
+        });
+        ACTION_PARTIAL_REGEX = /_\.partial\(this\.action\,\ &#x27;(.+?)&#x27;\)/g;
+        result = Replacer.replace(result, ACTION_PARTIAL_REGEX, function(attribute, initial) {
+          var path;
+          path = [raw_ctx, attribute].join('.');
+          return "" + (Replacer.addAction(path));
+        });
+        return result;
+      });
+    };
+    return {
+      register: register
+    };
+  })();
+
+  module.exports = BaseHelpers;
+
+}).call(this);
+
+},{"../replacer":224,"./helpers":213,"./lookups":215}],213:[function(require,module,exports){
 (function() {
   var HandlebarsHelpers,
     __slice = [].slice;
 
   HandlebarsHelpers = (function() {
-    var CONSTANTS, Handlebars, HandlebarsLookups, Replacer, base, constant, init, lodash, moment, raw, register, wrapped, wrapped_state, _;
+    var BaseHelpers, CONSTANTS, HTML_REGEX, Handlebars, LodashHelpers, MomentHelpers, Replacer, VanillaHelpers, constant, firstArgElemental, firstArgObject, init, raw, register, wrap, wrapped, wrapped_state, _;
     _ = require('lodash');
     Handlebars = require('handlebars');
     Replacer = require('../replacer');
-    HandlebarsLookups = require('./lookups');
+    LodashHelpers = require('./lodash_helpers');
+    BaseHelpers = require('./base_helpers');
+    MomentHelpers = require('./moment_helpers');
+    VanillaHelpers = require('./vanilla_helpers');
+    HTML_REGEX = /^<([\s\S]*?.+?[\s\S]*?)>$/;
     CONSTANTS = {
-      actions: ['create', 'update', 'destroy', 'previous', 'next', 'login']
+      actions: ['create', 'update', 'destroy', 'previous', 'next', 'facebook']
     };
     constant = function(name) {
       return CONSTANTS[name];
     };
     init = function() {
-      lodash();
-      base();
-      return moment();
+      LodashHelpers.register();
+      BaseHelpers.register();
+      MomentHelpers.register();
+      return VanillaHelpers.register();
+    };
+    firstArgObject = function(method, final_fn, argums) {
+      var HandlebarsMock, arg_ids, args, code, ctx_id, initial_args, initial_ctx, initial_opts, opts, raw_ctx, result, wrapped_state_ctx, _i, _ref, _ref1;
+      _ref = [void 0].concat(argums[0]), initial_ctx = _ref[0], initial_args = 3 <= _ref.length ? __slice.call(_ref, 1, _i = _ref.length - 1) : (_i = 1, []), initial_opts = _ref[_i++];
+      _ref1 = initial_opts.ids || [], ctx_id = _ref1[0], arg_ids = 2 <= _ref1.length ? __slice.call(_ref1, 1) : [];
+      if (initial_ctx || ctx_id) {
+        wrapped_state_ctx = wrapped_state(initial_ctx, ctx_id);
+        raw_ctx = raw(initial_ctx, ctx_id);
+      }
+      args = [];
+      _.each(initial_args, function(arg, i) {
+        return args[i] = raw(initial_args[i], arg_ids[i]);
+      });
+      if (!_.isEmpty(_.keys(initial_opts.hash))) {
+        args.push(initial_opts.hash);
+      }
+      opts = {};
+      HandlebarsMock = require('./mock');
+      if (initial_opts.fn) {
+        opts.fn = initial_opts.fn(HandlebarsMock.get());
+      }
+      if (initial_opts.inverse) {
+        opts.inverse = initial_opts.inverse(HandlebarsMock.get());
+      }
+      opts.method = initial_opts.name;
+      result = final_fn(raw_ctx, wrapped_state_ctx, args, opts);
+      if (result.match(HTML_REGEX)) {
+        code = wrap(result);
+      } else {
+        code = "{" + result + "}";
+      }
+      return new Handlebars.SafeString(code);
+    };
+    firstArgElemental = function(method, final_fn, argums) {
+      var HandlebarsMock, arg_ids, args, code, ctx_id, initial_args, initial_ctx, initial_opts, opts, raw_ctx, result, wrapped_state_ctx, _i, _ref;
+      initial_ctx = argums[0], initial_args = 3 <= argums.length ? __slice.call(argums, 1, _i = argums.length - 1) : (_i = 1, []), initial_opts = argums[_i++];
+      _ref = initial_opts.ids, ctx_id = _ref[0], arg_ids = 2 <= _ref.length ? __slice.call(_ref, 1) : [];
+      wrapped_state_ctx = wrapped_state(initial_ctx, ctx_id);
+      raw_ctx = raw(initial_ctx, ctx_id);
+      args = [];
+      _.each(initial_args, function(arg, i) {
+        return args[i] = raw(initial_args[i], arg_ids[i]);
+      });
+      if (!_.isEmpty(_.keys(initial_opts.hash))) {
+        args.push(initial_opts.hash);
+      }
+      opts = {};
+      HandlebarsMock = require('./mock');
+      if (initial_opts.fn) {
+        opts.fn = initial_opts.fn(HandlebarsMock.get());
+      }
+      if (initial_opts.inverse) {
+        opts.inverse = initial_opts.inverse(HandlebarsMock.get());
+      }
+      opts.method = initial_opts.name;
+      result = final_fn(raw_ctx, wrapped_state_ctx, args, opts);
+      if (result.match(HTML_REGEX)) {
+        code = wrap(result);
+      } else {
+        code = "\n<div>\n" + ("{" + result + "}\n") + "</div>";
+      }
+      return new Handlebars.SafeString(code);
     };
     register = function(method, final_fn) {
       return Handlebars.registerHelper(method, function() {
-        var HandlebarsMock, arg_ids, args, code, ctx_id, initial_args, initial_ctx, initial_opts, opts, raw_ctx, result, wrapped_state_ctx, _i, _ref;
-        initial_ctx = arguments[0], initial_args = 3 <= arguments.length ? __slice.call(arguments, 1, _i = arguments.length - 1) : (_i = 1, []), initial_opts = arguments[_i++];
-        _ref = initial_opts.ids, ctx_id = _ref[0], arg_ids = 2 <= _ref.length ? __slice.call(_ref, 1) : [];
-        wrapped_state_ctx = wrapped_state(initial_ctx, ctx_id);
-        raw_ctx = raw(initial_ctx, ctx_id);
-        args = [];
-        _.each(initial_args, function(arg, i) {
-          return args[i] = raw(initial_args[i], arg_ids[i]);
-        });
-        if (!_.isEmpty(_.keys(initial_opts.hash))) {
-          args.push(initial_opts.hash);
-        }
-        opts = {};
-        HandlebarsMock = require('./mock');
-        if (initial_opts.fn) {
-          opts.fn = initial_opts.fn(HandlebarsMock.get());
-        }
-        if (initial_opts.inverse) {
-          opts.inverse = initial_opts.inverse(HandlebarsMock.get());
-        }
-        result = final_fn(raw_ctx, wrapped_state_ctx, args, opts);
-        if (result.match(/^<(.*)>$/)) {
-          code = result;
+        if (arguments.length === 1 && _.isPlainObject(arguments[0])) {
+          return firstArgObject(method, final_fn, arguments);
         } else {
-          code = "\n<div>\n" + ("{" + result + "}\n") + "</div>";
+          return firstArgElemental(method, final_fn, arguments);
         }
-        return new Handlebars.SafeString(code);
       });
     };
     wrapped_state = function(initial, from_ids) {
@@ -61803,9 +62140,14 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
       return result.replace(name, Replacer.addState(name));
     };
     wrapped = function(initial, from_ids) {
-      var braces_match, div_match, result;
+      var braces_match, div_match, e, result;
       result = initial || from_ids;
-      result = result.toString();
+      try {
+        result = result.toString();
+      } catch (_error) {
+        e = _error;
+        debugger;
+      }
       if (div_match = result.match(/<div>\n{(.*?)}\n<\/div>/)) {
         result = div_match[1];
       } else if (braces_match = result.match(/^{(.*?)}$/)) {
@@ -61829,11 +62171,38 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
       }
       return result.replace('this.state.', '');
     };
-    lodash = function() {
-      var helpers;
-      helpers = _.without.apply(_, [_.keys(_)].concat(__slice.call(constant('actions'))));
+    wrap = function(content) {
+      if (!content) {
+        return;
+      }
+      return "<div>" + content + "</div>";
+    };
+    return {
+      init: init,
+      constant: constant,
+      register: register,
+      wrap: wrap
+    };
+  })();
+
+  module.exports = HandlebarsHelpers;
+
+}).call(this);
+
+},{"../replacer":224,"./base_helpers":212,"./lodash_helpers":214,"./mock":217,"./moment_helpers":218,"./vanilla_helpers":219,"handlebars":24,"lodash":27}],214:[function(require,module,exports){
+(function() {
+  var LodashHelpers,
+    __slice = [].slice;
+
+  LodashHelpers = (function() {
+    var register, _;
+    _ = require('lodash');
+    register = function() {
+      var HandlebarsHelpers, helpers;
+      HandlebarsHelpers = require('./helpers');
+      helpers = _.without.apply(_, [_.keys(_)].concat(__slice.call(HandlebarsHelpers.constant('actions'))));
       return _.each(helpers, function(method) {
-        return register(method, function(raw_ctx, wrapped_ctx, args, opts) {
+        return HandlebarsHelpers.register(method, function(raw_ctx, wrapped_ctx, args, opts) {
           var fn_args;
           if (opts.fn) {
             if (_.isEmpty(args)) {
@@ -61848,60 +62217,16 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
         });
       });
     };
-    moment = function() {
-      return register('moment', function(raw_ctx, wrapped_ctx, args, opts) {
-        var methods;
-        methods = [];
-        _.each(args[0], function(param, method) {
-          return methods.push("" + method + "('" + param + "')");
-        });
-        return "moment(" + wrapped_ctx + ")." + (methods.join('.'));
-      });
-    };
-    base = function() {
-      register('each', function(raw_ctx, wrapped_ctx, args, opts) {
-        var each_iteration, records_exist;
-        HandlebarsLookups.addCollection(raw_ctx);
-        each_iteration = Replacer.replace(opts.fn, /this\.state\.(.+?)/, function(attribute, initial) {
-          return "record." + attribute;
-        });
-        records_exist = ("_.map(" + wrapped_ctx + ", function(record, i) {\n") + ("return " + each_iteration + "\n") + '})';
-        if (opts.inverse) {
-          return "" + wrapped_ctx + ".length ? (" + records_exist + ") : (" + opts.inverse + ")";
-        } else {
-          return records_exist;
-        }
-      });
-      register('if', function(raw_ctx, wrapped_ctx, args, opts) {
-        return "" + wrapped_ctx + " ? " + (opts.fn || null) + " : " + (opts.inverse || null);
-      });
-      return register('with', function(raw_ctx, wrapped_ctx, args, opts) {
-        var ACTION_PARTIAL_REGEX, result;
-        result = Replacer.replace(opts.fn, /{this\.state\.(.+?)}/g, function(attribute, initial) {
-          var path;
-          path = [raw_ctx, attribute].join('.');
-          HandlebarsLookups.add(path);
-          return "{" + (Replacer.addState(path)) + "}";
-        });
-        ACTION_PARTIAL_REGEX = /_\.partial\(this\.action\,\ &#x27;(.+?)&#x27;\)/g;
-        result = Replacer.replace(result, ACTION_PARTIAL_REGEX, function(attribute, initial) {
-          var path;
-          path = [raw_ctx, attribute].join('.');
-          return "" + (Replacer.addAction(path));
-        });
-        return result;
-      });
-    };
     return {
-      init: init
+      register: register
     };
   })();
 
-  module.exports = HandlebarsHelpers;
+  module.exports = LodashHelpers;
 
 }).call(this);
 
-},{"../replacer":218,"./lookups":210,"./mock":212,"handlebars":24,"lodash":27}],210:[function(require,module,exports){
+},{"./helpers":213,"lodash":27}],215:[function(require,module,exports){
 (function() {
   var HandlebarsLookups;
 
@@ -61912,9 +62237,6 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
     collection = [];
     on_context = [];
     add = function(name) {
-      if (_.isArray(name)) {
-        debugger;
-      }
       return individual.push(name);
     };
     addCollection = function(name) {
@@ -61953,7 +62275,7 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
 
 }).call(this);
 
-},{"lodash":27}],211:[function(require,module,exports){
+},{"lodash":27}],216:[function(require,module,exports){
 (function() {
   var HandlebarsManager;
 
@@ -61963,18 +62285,20 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
     Handlebars = require('handlebars');
     HandlebarsLookups = require('./lookups');
     HandlebarsHelpers = require('./helpers');
+    init = function() {
+      this.patchCompiler();
+      return HandlebarsHelpers.init();
+    };
     patchCompiler = function() {
       return Handlebars.JavaScriptCompiler.prototype.nameLookup = function(parent, name, type) {
         _.each(this.environment.opcodes, function(opcode) {
-          var lookup;
-          if (opcode.opcode === 'lookupOnContext') {
-            lookup = opcode.args[0].join('.');
-            if (lookup === 'facebook.login') {
-              return HandlebarsLookups.addOnContext(lookup);
-            } else {
-              return HandlebarsLookups.addOnContext(name);
-            }
+          if (opcode.opcode !== 'lookupOnContext') {
+            return;
           }
+          if (_.include(_.keys(Handlebars.helpers), name)) {
+            return;
+          }
+          return HandlebarsLookups.addOnContext(name);
         });
         if (Handlebars.JavaScriptCompiler.isValidJavaScriptVariableName(name)) {
           return "" + parent + "." + name;
@@ -61983,12 +62307,9 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
         }
       };
     };
-    init = function() {
-      patchCompiler();
-      return HandlebarsHelpers.init();
-    };
     return {
-      init: init
+      init: init,
+      patchCompiler: patchCompiler
     };
   })();
 
@@ -61996,12 +62317,12 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
 
 }).call(this);
 
-},{"./helpers":209,"./lookups":210,"handlebars":24,"lodash":27}],212:[function(require,module,exports){
+},{"./helpers":213,"./lookups":215,"handlebars":24,"lodash":27}],217:[function(require,module,exports){
 (function() {
   var HandlebarsMock;
 
   HandlebarsMock = (function() {
-    var CONSTANTS, HandlebarsHelpers, HandlebarsLookups, Replacer, constant, get, getEmpty, isAction, _;
+    var HandlebarsHelpers, HandlebarsLookups, Replacer, get, getEmpty, isAction, scanDefaultValues, _;
     _ = require('lodash');
     _.mixin(require('lodash-deep'));
     Replacer = require('../replacer');
@@ -62024,24 +62345,32 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
       result = {};
       lookups = HandlebarsLookups.getIndividual();
       _.each(lookups, function(lookup) {
-        if (!isAction(lookup)) {
-          return _.deepSet(result, lookup, '');
+        if (isAction(lookup)) {
+          return;
         }
+        return _.deepSet(result, lookup, '');
       });
       return result;
     };
-    CONSTANTS = {
-      actions: ['create', 'update', 'destroy', 'previous', 'next', 'login']
-    };
-    constant = function(name) {
-      return CONSTANTS[name];
-    };
     isAction = function(lookup) {
-      return _.include(constant('actions'), _.last(lookup.split('.')));
+      return _.include(HandlebarsHelpers.constant('actions'), _.last(lookup.split('.')));
+    };
+    scanDefaultValues = function(code) {
+      var $, Defaults;
+      $ = require('jquery');
+      Defaults = require('../defaults');
+      return _.each($(code).find('input[defaultValue]'), function(el) {
+        var path_str, val, value_binding;
+        value_binding = $(el).prop('value');
+        path_str = value_binding.match('{this\.state\.(.*?)}')[1];
+        val = $(el).attr('defaultValue');
+        return Defaults.save(path_str, val);
+      });
     };
     return {
       get: get,
-      getEmpty: getEmpty
+      getEmpty: getEmpty,
+      scanDefaultValues: scanDefaultValues
     };
   })();
 
@@ -62049,80 +62378,66 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
 
 }).call(this);
 
-},{"../replacer":218,"./helpers":209,"./lookups":210,"lodash":27,"lodash-deep":26}],213:[function(require,module,exports){
+},{"../defaults":208,"../replacer":224,"./helpers":213,"./lookups":215,"jquery":25,"lodash":27,"lodash-deep":26}],218:[function(require,module,exports){
 (function() {
-  var MainModel;
+  var MomentHelpers;
 
-  MainModel = (function() {
-    var HandlebarsMock, Memory, traverse, _;
-
-    function MainModel() {}
-
+  MomentHelpers = (function() {
+    var register, _;
     _ = require('lodash');
-
-    _.mixin(require('lodash-deep'));
-
-    traverse = require('traverse');
-
-    Memory = require('./memory');
-
-    HandlebarsMock = require('./handlebars/mock');
-
-    MainModel.attributes = function() {
-      var result;
-      result = {};
-      this.attributesFromEmptyMock(result);
-      _.each(traverse(result).paths(), function(path) {
-        var existing, path_str, value;
-        path_str = path.join('.');
-        value = Memory.get(path_str);
-        if (!_.isEmpty(value)) {
-          existing = _.deepGet(result, path_str);
-          if (_.isObject(existing)) {
-            _.each(value, function(val, key) {
-              return _.deepSet(result, "" + path_str + "." + key, val);
-            });
-            return _.each(existing, function(val, key) {
-              var relation_id_path;
-              if (_.isObject(val) && !_.isArray(val)) {
-                relation_id_path = "" + path_str + "." + key + "." + value.model + "_id";
-                return _.deepSet(result, relation_id_path, value.id);
-              }
-            });
-          } else {
-            return _.deepSet(result, path_str, value);
-          }
-        }
+    register = function() {
+      var HandlebarsHelpers;
+      HandlebarsHelpers = require('./helpers');
+      return HandlebarsHelpers.register('moment', function(raw_ctx, wrapped_ctx, args, opts) {
+        var methods;
+        methods = [];
+        _.each(args[0], function(param, method) {
+          return methods.push("" + method + "('" + param + "')");
+        });
+        return "moment(" + wrapped_ctx + ")." + (methods.join('.'));
       });
-      return result;
     };
-
-    MainModel.attributesFromEmptyMock = function(result) {
-      _.each(traverse(HandlebarsMock.getEmpty()).paths(), function(path) {
-        var path_str;
-        if (path.length) {
-          path_str = path.join('.');
-          return _.deepSet(result, path_str, '');
-        }
-      });
-      return result;
+    return {
+      register: register
     };
-
-    return MainModel;
-
   })();
 
-  module.exports = MainModel;
+  module.exports = MomentHelpers;
 
 }).call(this);
 
-},{"./handlebars/mock":212,"./memory":214,"lodash":27,"lodash-deep":26,"traverse":204}],214:[function(require,module,exports){
+},{"./helpers":213,"lodash":27}],219:[function(require,module,exports){
+(function() {
+  var VanillaHelpers;
+
+  VanillaHelpers = (function() {
+    var register, _;
+    _ = require('lodash');
+    register = function() {
+      var HandlebarsHelpers, helpers;
+      HandlebarsHelpers = require('./helpers');
+      helpers = ['reverse'];
+      return _.each(helpers, function(method) {
+        return HandlebarsHelpers.register(method, function(raw_ctx, wrapped_ctx, args, opts) {
+          return "" + wrapped_ctx + "." + method + "(" + (args.join(', ')) + ")";
+        });
+      });
+    };
+    return {
+      register: register
+    };
+  })();
+
+  module.exports = VanillaHelpers;
+
+}).call(this);
+
+},{"./helpers":213,"lodash":27}],220:[function(require,module,exports){
 (function() {
   var Memory;
 
-  Memory = module.exports = (function() {
-    var app_data, clean, get, getAll, getForever, has, set, setArray, setForever, _;
-    _ = require('lodash');
+  Memory = (function() {
+    var app_data, clean, get, getAll, getForever, has, set, setArray, setForever;
     app_data = {};
     set = function(data) {
       return app_data[data.model] = data;
@@ -62144,7 +62459,7 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
       return app_data[name] = records;
     };
     get = function(model) {
-      return app_data[model] || {};
+      return app_data[model];
     };
     getAll = function() {
       return app_data;
@@ -62167,22 +62482,18 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
     };
   })();
 
-  window.M = Memory;
+  module.exports = Memory;
 
 }).call(this);
 
-},{"lodash":27}],215:[function(require,module,exports){
+},{}],221:[function(require,module,exports){
 (function() {
   var Model;
 
   Model = (function() {
-    var MainModel, Memory, _;
+    var FilledModel;
 
-    _ = require('lodash');
-
-    Memory = require('./memory');
-
-    MainModel = require('./main_model');
+    FilledModel = require('./filled_model');
 
     function Model(attributes) {
       this.attributes = attributes;
@@ -62194,8 +62505,10 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
       return this.attributes;
     };
 
-    Model.main = function() {
-      return new Model(MainModel.attributes());
+    Model.filled = function() {
+      var filled;
+      filled = new FilledModel;
+      return new Model(filled.attributes);
     };
 
     return Model;
@@ -62206,20 +62519,17 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
 
 }).call(this);
 
-},{"./main_model":213,"./memory":214,"lodash":27}],216:[function(require,module,exports){
+},{"./filled_model":211}],222:[function(require,module,exports){
 (function() {
   var Persistance;
 
   Persistance = module.exports = (function() {
-    var Databound, Memory, Model, Router, act, communicate, setApi, _;
+    var Databound, Memory, Model, act, communicate, _;
     _ = require('lodash');
     Databound = require('databound');
+    Databound.API_URL = window.PAVONINE_SERVER;
     Model = require('./model');
-    Router = require('./router');
     Memory = require('./memory');
-    setApi = function(api_url) {
-      return Databound.API_URL = api_url;
-    };
     communicate = function(action, attributes) {
       var connection, model;
       if (!attributes.model) {
@@ -62249,7 +62559,6 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
       return communicate(action, attributes);
     };
     return {
-      setApi: setApi,
       act: act,
       communicate: communicate
     };
@@ -62257,7 +62566,7 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
 
 }).call(this);
 
-},{"./memory":214,"./model":215,"./router":219,"databound":1,"lodash":27}],217:[function(require,module,exports){
+},{"./memory":220,"./model":221,"databound":1,"lodash":27}],223:[function(require,module,exports){
 (function() {
   var ReactMixin,
     __slice = [].slice;
@@ -62273,7 +62582,7 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
     Facebook = require('./facebook');
     return {
       getInitialState: function() {
-        return Model.main().attributes;
+        return Model.filled().attributes;
       },
       onChange: function(path, e) {
         var new_state;
@@ -62284,8 +62593,7 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
       action: function(path, e) {
         var action, attributes, model_path, model_path_str, _i, _ref;
         _ref = path.split('.'), model_path = 2 <= _ref.length ? __slice.call(_ref, 0, _i = _ref.length - 1) : (_i = 0, []), action = _ref[_i++];
-        model_path_str = model_path.join('.');
-        if (model_path_str === 'facebook') {
+        if (action === 'facebook') {
           return Facebook.login();
         }
         if (action === 'next') {
@@ -62294,6 +62602,7 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
         if (action === 'previous') {
           return Router.previous();
         }
+        model_path_str = model_path.join('.');
         attributes = _.deepGet(this.state, model_path_str);
         attributes.model = _.last(model_path_str.split('.'));
         return Persistance.act(action, e, attributes).then(function(new_model) {
@@ -62305,25 +62614,25 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
 
 }).call(this);
 
-},{"./facebook":207,"./model":215,"./persistance":216,"./replacer":218,"./router":219,"lodash":27,"lodash-deep":26}],218:[function(require,module,exports){
+},{"./facebook":209,"./model":221,"./persistance":222,"./replacer":224,"./router":225,"lodash":27,"lodash-deep":26}],224:[function(require,module,exports){
 (function() {
   var Replacer;
 
   Replacer = module.exports = (function() {
-    var Handlebars, addAction, addState, capitalizeActionCase, removeExtraQuotes, replace, replaceToBindings, splice, toAttribute, toReactCode, toState, _;
-    Handlebars = require('handlebars');
+    var addAction, addState, capitalizations, removeExtraQuotes, replace, replaceToBindings, splice, toAttribute, toReactCode, toState, _;
     _ = require('lodash');
     toReactCode = function(jsx_code) {
       jsx_code = removeExtraQuotes(jsx_code);
-      jsx_code = capitalizeActionCase(jsx_code);
-      return jsx_code = replaceToBindings(jsx_code);
+      jsx_code = capitalizations(jsx_code);
+      jsx_code = replaceToBindings(jsx_code);
+      return jsx_code;
     };
     removeExtraQuotes = function(jsx_code) {
       return jsx_code.replace(/"{/g, '{').replace(/}"/g, '}');
     };
-    capitalizeActionCase = function(jsx_code) {
+    capitalizations = function(jsx_code) {
       var result, words;
-      words = ['onChange', 'onClick'];
+      words = ['onChange', 'onClick', 'defaultValue'];
       result = jsx_code;
       _.each(words, function(word) {
         return result = replace(result, word.toLowerCase(), function() {
@@ -62333,8 +62642,8 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
       return result;
     };
     replaceToBindings = function(jsx_code) {
-      return replace(jsx_code, /value={(.+?)}/gi, function(attribute) {
-        return "value={" + attribute + "} onChange={_.partial(this.onChange, '" + attribute + "')}";
+      return replace(jsx_code, /\ value={(.+?)}/gi, function(attribute) {
+        return " value={" + attribute + "} onChange={_.partial(this.onChange, '" + attribute + "')}";
       });
     };
     replace = function(code, from, to) {
@@ -62382,93 +62691,46 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
 
 }).call(this);
 
-},{"handlebars":24,"lodash":27}],219:[function(require,module,exports){
+},{"lodash":27}],225:[function(require,module,exports){
 (function() {
   var Router;
 
   Router = (function() {
-    var Data, Memory, Persistance, UI, change, current, getMissing, goOn, login, next, previous, setCurrent, singularize, step, _;
-    Memory = require('./memory');
+    var Data, UI, change, goOn, next, previous, return_to, step;
     UI = require('./ui');
     Data = require('./data');
-    _ = require('lodash');
-    Persistance = require('./persistance');
     step = 1;
-    setCurrent = function(_step) {
-      return step = _step;
-    };
-    current = function() {
-      return step;
-    };
+    return_to = 1;
     change = function(_step, dont_clean) {
-      var e;
-      if (!dont_clean) {
-        Memory.clean();
-      }
+      var ui;
       step = _step;
-      try {
-        UI.render(step);
-        return setCurrent(step);
-      } catch (_error) {
-        e = _error;
-        if (e.message === 'get_missing') {
-          return getMissing();
+      ui = new UI(step);
+      ui.compile();
+      return Data.getMissing().then(function() {
+        return ui.render();
+      }).fail(function(resp) {
+        if (resp === 'login') {
+          return_to = step;
+          return change('login');
         } else {
-          throw e;
+          throw new Error("Server responded with error " + resp);
         }
-      }
+      });
     };
     previous = function(current_data) {
-      if (current_data) {
-        Memory.set(current_data);
-      }
       return change(step - 1);
     };
     next = function(current_data) {
-      if (current_data) {
-        Memory.set(current_data);
-      }
       return change(step + 1);
     };
     goOn = function() {
-      return change(step, true);
-    };
-    getMissing = function() {
-      var attributes, for_request, variable;
-      Persistance = require('./persistance');
-      variable = _.first(Data.missingVariables());
-      if (variable === 'current_user') {
-        if (attributes = Memory.getForever('current_user')) {
-          for_request = _.pick(attributes, 'id', 'access_token', 'model');
-          return Persistance.communicate('update', for_request).then(function(current_user) {
-            Memory.setForever(current_user.attributes);
-            return goOn();
-          });
-        } else {
-          return login();
-        }
-      } else {
-        attributes = {
-          model: singularize(variable)
-        };
-        return Persistance.communicate('where', attributes).then(function(records) {
-          return goOn();
-        });
-      }
-    };
-    singularize = function(string) {
-      return string.replace(/s$/, '');
-    };
-    login = function() {
-      return UI.login();
+      return change(return_to);
     };
     return {
-      current: current,
       change: change,
-      login: login,
-      goOn: goOn,
       previous: previous,
-      next: next
+      next: next,
+      goOn: goOn
     };
   })();
 
@@ -62476,92 +62738,135 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
 
 }).call(this);
 
-},{"./data":206,"./memory":214,"./persistance":216,"./ui":220,"lodash":27}],220:[function(require,module,exports){
+},{"./data":206,"./ui":226}],226:[function(require,module,exports){
 (function() {
   var UI;
 
   UI = (function() {
-    var $, Converter, React, component, components, elements, idx, klassName, loading, loadingElement, login, loginContainer, removeAll, render, renderComponent, stepContainer, _;
-    React = require('react');
-    _ = require('lodash');
+    var $, Converter, React, _;
+
     $ = require('jquery');
+
+    _ = require('lodash');
+
+    React = require('react');
+
     Converter = require('./converter');
-    removeAll = function() {
-      _.each(elements(), function(el) {
+
+    function UI(step) {
+      this.step = step;
+    }
+
+    UI.prototype.compile = function() {
+      return this.react_component = this.component();
+    };
+
+    UI.prototype.klassName = function() {
+      return "pavonine_" + this.step;
+    };
+
+    UI.prototype.component = function() {
+      return Converter.htmlToReactComponent(this.klassName(), this.content())();
+    };
+
+    UI.prototype.content = function() {
+      return window.PAVONINE_STEPS[this.step] || (function() {
+        throw new Error("No step '" + this.step + "'");
+      }).call(this);
+    };
+
+    UI.prototype.render = function() {
+      this.loading(true);
+      this.removeAll();
+      $(this.renderComponent().getDOMNode()).show();
+      return this.loading(false);
+    };
+
+    UI.prototype.renderComponent = function() {
+      return React.renderComponent(this.react_component, this.container());
+    };
+
+    UI.prototype.removeAll = function() {
+      _.each(this.elements(), function(el) {
         return el.html('');
       });
-      return $(loginContainer()).html('');
+      return $(this.loginContainer()).html('');
     };
-    render = function(step) {
-      var componentF, content, rendered_component;
-      loading(true);
-      removeAll();
-      content = Compiler.stepContent(step);
-      componentF = component(klassName(step), content);
-      rendered_component = renderComponent(componentF, stepContainer(step));
-      $(rendered_component.getDOMNode()).show();
-      return loading(false);
+
+    UI.prototype.loading = function(show) {
+      return this.loadingElement().toggle(show);
     };
-    login = function() {
-      var componentF, content, rendered_component;
-      loading(true);
-      removeAll();
-      content = Compiler.loginContent();
-      componentF = component(klassName('login'), content);
-      rendered_component = renderComponent(componentF, loginContainer());
-      $(rendered_component.getDOMNode()).show();
-      return loading(false);
+
+    UI.prototype.container = function() {
+      if (this.step === 'login') {
+        return this.loginContainer();
+      } else {
+        return this.idx()[this.step][0];
+      }
     };
-    loading = function(show) {
-      return $('*[loading]').toggle(show);
-    };
-    component = function(klass_name, content) {
-      return Converter.htmlToReactComponent(klass_name, content)();
-    };
-    renderComponent = function(component, container) {
-      return React.renderComponent(component, container);
-    };
-    klassName = function(suffix) {
-      return "cornflake_" + suffix;
-    };
-    stepContainer = function(i) {
-      return idx()[i][0];
-    };
-    loginContainer = function() {
+
+    UI.prototype.loginContainer = function() {
       return $('*[login]')[0];
     };
-    loadingElement = function() {
+
+    UI.prototype.loadingElement = function() {
       return $('*[loading]');
     };
-    idx = function() {
-      return _.inject(elements(), function(result, element) {
+
+    UI.prototype.idx = function() {
+      return _.inject(this.elements(), function(result, element) {
         var step;
         step = $(element).attr('step') || 1;
         result[step] = $(element);
         return result;
       }, {});
     };
-    elements = function() {
+
+    UI.prototype.elements = function() {
       return _.map($('*[step]'), function(el) {
         return $(el);
       });
     };
-    components = function() {
-      return _.map($("[class^='cornflake']"), function(el) {
-        return $(el);
-      });
-    };
-    return {
-      render: render,
-      login: login
-    };
+
+    return UI;
+
   })();
 
   module.exports = UI;
 
 }).call(this);
 
-},{"./converter":205,"jquery":25,"lodash":27,"react":203}],221:[function(require,module,exports){
+},{"./converter":205,"jquery":25,"lodash":27,"react":203}],227:[function(require,module,exports){
+(function() {
+  var Utils;
+
+  Utils = (function() {
+    var $, failedPromise, pathString, singularize;
+    $ = require('jquery');
+    failedPromise = function(result) {
+      var deferred;
+      deferred = $.Deferred();
+      deferred.reject(result);
+      return deferred.promise();
+    };
+    singularize = function(string) {
+      return string.replace(/s$/, '');
+    };
+    pathString = function(array) {
+      return array.join('.');
+    };
+    return {
+      failedPromise: failedPromise,
+      singularize: singularize,
+      pathString: pathString
+    };
+  })();
+
+  module.exports = Utils;
+
+}).call(this);
+
+},{"jquery":25}],228:[function(require,module,exports){
 !function(t,e){"object"==typeof exports&&"object"==typeof module?module.exports=e():"function"==typeof define&&define.amd?define(e):"object"==typeof exports?exports.HTMLtoJSX=e():t.HTMLtoJSX=e()}(this,function(){return function(t){function e(i){if(n[i])return n[i].exports;var s=n[i]={exports:{},id:i,loaded:!1};return t[i].call(s.exports,s,s.exports,e),s.loaded=!0,s.exports}var n={};return e.m=t,e.c=n,e.p="",e(0)}([function(t){/** @preserve
 	 *  Copyright (c) 2014, Facebook, Inc.
 	 *  All rights reserved.
@@ -62572,4 +62877,4 @@ var hasOwnProperty = Object.hasOwnProperty || function (obj, key) {
 	 *
 	 */
 "use strict";function e(t,e){if(1===e)return t;if(0>e)throw new Error;for(var n="";e;)1&e&&(n+=t),(e>>=1)&&(t+=t);return n}function n(t,e){return t.slice(-e.length)===e}function i(t,e){return n(t,e)?t.slice(0,-e.length):t}function s(t){return t.replace(/-(.)/g,function(t,e){return e.toUpperCase()})}function o(t){return!/[^\s]/.test(t)}function r(t){return void 0!==t&&null!==t&&("number"==typeof t||parseInt(t,10)==t)}var u={ELEMENT:1,TEXT:3,COMMENT:8},c={"for":"htmlFor","class":"className"},h=function(t){this.config=t||{},void 0===this.config.createClass&&(this.config.createClass=!0),this.config.indent||(this.config.indent="  "),this.config.outputClassName||(this.config.outputClassName="NewComponent")};h.prototype={reset:function(){this.output="",this.level=0},convert:function(t){this.reset();var e,e;return e=document.createElement("div"),e.innerHTML="\n"+this._cleanInput(t)+"\n",this.config.createClass&&(this.output=this.config.outputClassName?"var "+this.config.outputClassName+" = React.createClass({\n":"React.createClass({\n",this.output+=this.config.indent+"render: function() {\n",this.output+=this.config.indent+this.config.indent+"return (\n"),this._onlyOneTopLevel(e)?this._traverse(e):(this.output+=this.config.indent+this.config.indent+this.config.indent,this.level++,this._visit(e)),this.output=this.output.trim()+"\n",this.config.createClass&&(this.output+=this.config.indent+this.config.indent+");\n",this.output+=this.config.indent+"}\n",this.output+="});"),this.output},_cleanInput:function(t){return t=t.trim(),t=t.replace(/<script([\s\S]*?)<\/script>/g,"")},_onlyOneTopLevel:function(t){if(1===t.childNodes.length&&t.childNodes[0].nodeType===u.ELEMENT)return!0;for(var e=!1,n=0,i=t.childNodes.length;i>n;n++){var s=t.childNodes[n];if(s.nodeType===u.ELEMENT){if(e)return!1;e=!0}else if(s.nodeType===u.TEXT&&!o(s.textContent))return!1}return!0},_getIndentedNewline:function(){return"\n"+e(this.config.indent,this.level+2)},_visit:function(t){this._beginVisit(t),this._traverse(t),this._endVisit(t)},_traverse:function(t){this.level++;for(var e=0,n=t.childNodes.length;n>e;e++)this._visit(t.childNodes[e]);this.level--},_beginVisit:function(t){switch(t.nodeType){case u.ELEMENT:this._beginVisitElement(t);break;case u.TEXT:this._visitText(t);break;case u.COMMENT:this._visitComment(t);break;default:console.warn("Unrecognised node type: "+t.nodeType)}},_endVisit:function(t){switch(t.nodeType){case u.ELEMENT:this._endVisitElement(t);break;case u.TEXT:case u.COMMENT:}},_beginVisitElement:function(t){for(var e=t.tagName.toLowerCase(),n=[],i=0,s=t.attributes.length;s>i;i++)n.push(this._getElementAttribute(t,t.attributes[i]));this.output+="<"+e,n.length>0&&(this.output+=" "+n.join(" ")),t.firstChild&&(this.output+=">")},_endVisitElement:function(t){this.output=i(this.output,this.config.indent),this.output+=t.firstChild?"</"+t.tagName.toLowerCase()+">":" />"},_visitText:function(t){var e=t.textContent;e.indexOf("\n")>-1&&(e=t.textContent.replace(/\n\s*/g,this._getIndentedNewline())),this.output+=e},_visitComment:function(t){this.output+="{/*"+t.textContent.replace("*/","* /")+"*/}"},_getElementAttribute:function(t,e){switch(e.name){case"style":return this._getStyleAttribute(e.value);default:var n=c[e.name]||e.name,i=n+"=";return i+=r(e.value)?"{"+e.value+"}":'"'+e.value.replace('"',"&quot;")+'"'}},_getStyleAttribute:function(t){var e=new a(t).toJSXString();return"style={{"+e+"}}"}};var a=function(t){this.parse(t)};a.prototype={parse:function(t){this.styles={},t.split(";").forEach(function(t){t=t.trim();var e=t.indexOf(":"),n=t.substr(0,e),i=t.substr(e+1).trim();""!==n&&(this.styles[n]=i)},this)},toJSXString:function(){var t=[];for(var e in this.styles)this.styles.hasOwnProperty(e)&&t.push(this.toJSXKey(e)+": "+this.toJSXValue(this.styles[e]));return t.join(", ")},toJSXKey:function(t){return s(t)},toJSXValue:function(t){return r(t)?t:n(t,"px")?i(t,"px"):"'"+t.replace(/'/g,'"')+"'"}},t.exports=h}])});
-},{}]},{},[208])
+},{}]},{},[210])
