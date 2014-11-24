@@ -54,7 +54,7 @@
     installMain = function() {
       var script;
       script = window.document.createElement('script');
-      script.src = "" + window.PAVONINE_SERVER + "/core.js";
+      script.src = "" + window.PAVONINE_SERVER + "/core" + window.PAVONINE_MIN + ".js";
       return window.document.body.appendChild(script);
     };
     return {

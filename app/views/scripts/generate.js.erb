@@ -1,4 +1,5 @@
 window.PAVONINE_APP = '<%= @app.token %>';
 window.PAVONINE_SERVER = '<%= request.base_url %>';
 window.PAVONINE_FB_APP_ID = '776916785684160';
+window.PAVONINE_MIN = '<%= '.min' if false and Rails.env == 'production' %>';
 <%= render(partial: 'pavonine') %>
