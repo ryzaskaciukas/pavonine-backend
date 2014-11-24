@@ -63,13 +63,9 @@
     };
   })();
 
-  Pavonine.init();
-
-  window.onload = function() {
-    return Pavonine.scan();
-  };
-
   module.exports = Pavonine;
+
+  window.Pavonine = Pavonine;
 
 }).call(this);
 
