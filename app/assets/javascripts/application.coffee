@@ -32,7 +32,7 @@ App = (->
   initEditor = ->
     editor().setTheme('ace/theme/tomorrow_night')
     editor().getSession().setMode('ace/mode/handlebars')
-    editor().setFontSize(15)
+    editor().setFontSize(16)
     editor().setShowPrintMargin(false)
     editor().setShowFoldWidgets(false)
     editor().setShowInvisibles(false)

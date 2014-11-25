@@ -17,4 +17,8 @@ class App
   def script(request)
     "<script src='#{js(request)}'></script>"
   end
+
+  def stylesheet(request)
+    "#{request.base_url}/assets/example.css"
+  end
 end

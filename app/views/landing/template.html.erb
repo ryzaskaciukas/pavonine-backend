@@ -1,35 +1,27 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Pavonine.io example</title>
     <%= raw @app.script(request) %>
     <link rel='stylesheet'
-      href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css">
+      href='<%= @app.stylesheet(request) %>'>
   </head>
   <body>
-    <div class='container'>
-      <div class='row text-center'>
-        {{#step 1}}
-          {{#with note}}
-            <h1>Posting: {{content}}</h1>
-            <input value={{content}} class='form-control'>
-            <button onClick={{create}} class='btn btn-lg btn-success'>Save</button>
-          {{/with}}
-        {{/step}}
+    {{#step 1}}
+      {{#with note}}
+        <h1>Posting: {{content}}</h1>
+        <input value={{content}}>
 
-        {{#step 2}}
-          <h1>All notes</h1>
-          <ul class='list-group'>
-            {{#each notes}}
-              <li class='list-group-item list-group-item-success'>
-                {{content}}
-              </li>
-            {{/each}}
-          </ul>
+        <button onClick={{create}}>Save</button>
+      {{/with}}
+    {{/step}}
 
-          <button onClick={{previous}} class='btn btn-lg btn-success'>Back</button>
-        {{/step}}
-      </div>
-    </div>
+    {{#step 2}}
+      <h1>All notes</h1>
+      {{#each notes}}
+        <p>{{content}}</p>
+      {{/each}}
+
+      <button onClick={{previous}}>Back</button>
+    {{/step}}
   </body>
 </html>
