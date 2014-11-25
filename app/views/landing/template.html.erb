@@ -1,41 +1,34 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>
-      Pavonine.io example
-    </title>
-    <meta content='initial-scale=1' name='viewport' />
+    <title>Pavonine.io example</title>
     <%= raw @app.script(request) %>
-    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" rel="stylesheet">
+    <link rel='stylesheet'
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css">
   </head>
   <body>
     <div class='container'>
-      <div class='row'>
-        <div class='text-center'>
-          {{#step 1}}
-            <h1>Post a note</h2>
-            {{#with note}}
-              <input value='{{content}}' class='form-control'>
-              <button onClick='{{create}}' class='btn btn-lg btn-success'>
-                Save me
-              </button>
+      <div class='row text-center'>
+        {{#step 1}}
+          {{#with note}}
+            <h1>Posting: {{content}}</h1>
+            <input value={{content}} class='form-control'>
+            <button onClick={{create}} class='btn btn-lg btn-success'>Save</button>
+          {{/with}}
+        {{/step}}
 
-              <p>
-                Your note: {{content}}
-              </p>
-            {{/with}}
-          {{/step}}
+        {{#step 2}}
+          <h1>All notes</h1>
+          <ul class='list-group'>
+            {{#each notes}}
+              <li class='list-group-item list-group-item-success'>
+                {{content}}
+              </li>
+            {{/each}}
+          </ul>
 
-          {{#step 2}}
-            <h1>All notes</h1>
-            <ul class='list-group'>
-              {{#each notes}}
-                <li class='list-group-item list-group-item-success'>
-                  {{content}}
-                </li>
-              {{/each}}
-          {{/step}}
-        </div>
+          <button onClick={{previous}} class='btn btn-lg btn-success'>Back</button>
+        {{/step}}
       </div>
     </div>
   </body>

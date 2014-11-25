@@ -30,11 +30,15 @@ App = (->
         console.log 'Copied', event
 
   initEditor = ->
-    editor().setTheme('ace/theme/monokai')
-    editor().getSession().setMode('ace/mode/html');
+    editor().setTheme('ace/theme/tomorrow_night')
+    editor().getSession().setMode('ace/mode/handlebars')
+    editor().setFontSize(15)
+    editor().setShowPrintMargin(false)
+    editor().setShowFoldWidgets(false)
+    editor().setShowInvisibles(false)
 
     $.get($('.install a').prop('href')).then (resp) ->
-      editor().setValue(resp)
+      editor().setValue(resp, 1)
       renderBrowser()
 
   editor = ->
