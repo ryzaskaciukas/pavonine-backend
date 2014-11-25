@@ -18,11 +18,40 @@
 
 App = (->
   init = ->
+    initClipboard()
+    initEditor()
+    bindEditor()
+
+  initClipboard = ->
     client = new ZeroClipboard(document.getElementById('install-copy'))
 
     client.on 'ready', (readyEvent) ->
       client.on 'aftercopy', (event) ->
         console.log 'Copied', event
+
+  initEditor = ->
+    editor().setTheme('ace/theme/monokai')
+    editor().getSession().setMode('ace/mode/html');
+
+    $.get($('.install a').prop('href')).then (resp) ->
+      editor().setValue(resp)
+      renderBrowser()
+
+  editor = ->
+    window.ace.edit('editor')
+
+  renderBrowser = ->
+    src = "data:text/html;charset=utf-8,#{encodeURIComponent(editor().getValue())}"
+    original_embed = $('#browser')
+    new_embed = original_embed.clone()
+    new_embed.prop('src', src)
+    original_embed.replaceWith(new_embed)
+
+  bindEditor = ->
+    editor().getSession().on('change', _.debounce(renderBrowser, 1000, {
+      leading: false
+      trailing: true
+    }))
 
   return {
     init: init

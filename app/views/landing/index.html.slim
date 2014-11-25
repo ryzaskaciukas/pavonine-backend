@@ -20,9 +20,15 @@
       p
         small have everything else on the fly
     div.showoff
-      .row.text-center
-        = image_tag 'sublime.png', class: 'editor'
-        = image_tag 'browser.png', class: 'browser'
+      .row
+        .container-fluid
+          div.col-md-5.col-md-offset-1
+            div#editor
+          div.col-md-5
+            embed#browser
+            // refresh button
+            // timer?
+            // styles of browser/editor
 
 .row
   .content

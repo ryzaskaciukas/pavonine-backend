@@ -43,9 +43,13 @@ body {
   }
 
   .showoff {
-    img {
-      width: 49%;
-      padding: 2%;
+    #editor, #browser {
+      height: 350px;
+      width: 100%;
+    }
+
+    #browser html {
+      transform: scale(.75);
     }
   }
 }
