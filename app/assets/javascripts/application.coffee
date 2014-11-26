@@ -62,4 +62,7 @@ App = (->
   }
 )()
 
+window.onerror = (e) ->
+  debugger
+
 $(-> App.init())
