@@ -11,6 +11,7 @@
       loading: /{{\#loading}}([\s\S]*?.+?[\s\S]*?){{\/loading}}/g
     };
     init = function() {
+      console.log('fuck you');
       return hide();
     };
     scan = function() {
